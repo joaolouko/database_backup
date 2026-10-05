@@ -42,6 +42,18 @@ Scripts inclusos em `database/`
 4. Crie no PostgreSQL uma base e importe os scripts em `database/` (Ex: via PgAdmin ou psql).
 5. Execute a aplicação: `fvm flutter run -d windows`
 
+### Estado local durante o desenvolvimento
+
+O histórico de execuções e as configurações não sensíveis são armazenados em:
+
+```text
+.dart_tool/sqflite_common_ffi/databases/app.db
+```
+
+Esse arquivo é recriado automaticamente quando necessário e pode ser removido junto com os artefatos de desenvolvimento usando `flutter clean` ou apagando `.dart_tool`. Senhas não são gravadas nessa tabela.
+
+O pipeline aguarda o encerramento dos streams de `pg_dump`/`pg_restore` e usa tentativas de remoção para arquivos intermediários, evitando o erro de arquivo bloqueado no Windows durante a combinação de criptografia e compactação.
+
 ## Cenários de Demonstração (Matriz de Testes)
 
 Conforme a avaliação do trabalho, as validações cobrem:

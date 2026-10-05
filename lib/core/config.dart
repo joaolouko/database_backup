@@ -7,12 +7,45 @@ class AppConfig {
   String destinationPath = '';
   String additionalDestination = '';
   int retentionCount = 0;
-  bool executeMaintenance = true;
+  bool executeMaintenance = false;
   bool fullMaintenance = false;
   bool enableEncryption = false;
   String encryptionPassword = '';
   bool enableCompression = false;
   String compressionPassword = '';
+
+  Map<String, String> toStorageMap() => {
+        'host': host,
+        'port': port.toString(),
+        'username': username,
+        'database': database,
+        'destinationPath': destinationPath,
+        'additionalDestination': additionalDestination,
+        'retentionCount': retentionCount.toString(),
+        'executeMaintenance': executeMaintenance.toString(),
+        'fullMaintenance': fullMaintenance.toString(),
+        'enableEncryption': enableEncryption.toString(),
+        'enableCompression': enableCompression.toString(),
+      };
+
+  void loadFromStorage(Map<String, String> values) {
+    host = values['host'] ?? host;
+    port = int.tryParse(values['port'] ?? '') ?? port;
+    username = values['username'] ?? username;
+    database = values['database'] ?? database;
+    destinationPath = values['destinationPath'] ?? destinationPath;
+    additionalDestination = values['additionalDestination'] ?? additionalDestination;
+    retentionCount = int.tryParse(values['retentionCount'] ?? '') ?? retentionCount;
+    executeMaintenance = _parseBool(values['executeMaintenance'], executeMaintenance);
+    fullMaintenance = _parseBool(values['fullMaintenance'], fullMaintenance);
+    enableEncryption = _parseBool(values['enableEncryption'], enableEncryption);
+    enableCompression = _parseBool(values['enableCompression'], enableCompression);
+  }
+
+  bool _parseBool(String? value, bool fallback) {
+    if (value == null) return fallback;
+    return value.toLowerCase() == 'true';
+  }
 }
 
 final appConfig = AppConfig();

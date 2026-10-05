@@ -6,6 +6,7 @@ import '../../widgets/dashboard_ui.dart';
 import '../../services/service_locator.dart';
 import '../../models/models.dart';
 import '../../core/config.dart';
+import '../../core/database.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,12 +21,10 @@ class _DashboardPageState extends State<DashboardPage> {
   List<DatabaseServer> databases = [];
   List<BackupRecord> backups = [];
   
-  bool connected = false;
   bool connecting = false;
   bool backupRunning = false;
   
   double backupProgress = 0;
-  String? connectedHost;
   String? currentBackupDatabase;
   String currentBackupMessage = '';
 
@@ -36,7 +35,35 @@ class _DashboardPageState extends State<DashboardPage> {
   }
   
   Future<void> _loadBackups() async {
-    // If I wanted to load them from DB
+    final rows = await appDatabase.query(
+      'execution_history',
+      where: 'status IN (?, ?)',
+      whereArgs: [BackupStatus.success.name, BackupStatus.failed.name],
+      orderBy: 'id DESC',
+    );
+    final loaded = rows.map(_recordFromRow).toList();
+    if (mounted) {
+      setState(() => backups = loaded);
+    }
+  }
+
+  BackupRecord _recordFromRow(Map<String, dynamic> row) {
+    final statusName = row['status'] as String? ?? BackupStatus.failed.name;
+    final status = BackupStatus.values.firstWhere(
+      (value) => value.name == statusName,
+      orElse: () => BackupStatus.failed,
+    );
+    return BackupRecord(
+      id: row['id'] as int?,
+      database: row['database'] as String? ?? '-',
+      date: DateTime.tryParse(row['date'] as String? ?? '') ?? DateTime.now(),
+      duration: '${row['duration'] ?? '0'}s',
+      status: status,
+      filePath: row['file_path'] as String?,
+      error: row['error'] as String?,
+      maintenanceDecision: row['maintenance_decision'] as String?,
+      maintenanceRule: row['maintenance_rule'] as String?,
+    );
   }
 
   void showAddDatabaseDialog() {
@@ -57,31 +84,38 @@ class _DashboardPageState extends State<DashboardPage> {
             Future<void> connect() async {
               setDialogState(() => loading = true);
               try {
+                final parsedPort = int.tryParse(portController.text.trim());
+                if (parsedPort == null || parsedPort < 1 || parsedPort > 65535) {
+                  throw Exception('Porta inválida. Informe um valor entre 1 e 65535.');
+                }
                 await getIt.postgresService.connect(
                   host: hostController.text,
-                  port: int.parse(portController.text),
+                  port: parsedPort,
                   username: usernameController.text,
                   password: passwordController.text,
                   database: databaseController.text,
                 );
                 
                 final dbNames = await getIt.postgresService.getDatabases();
+                appConfig.host = hostController.text.trim();
+                appConfig.port = parsedPort;
+                appConfig.username = usernameController.text.trim();
+                appConfig.password = passwordController.text;
+                appConfig.database = databaseController.text.trim();
+                await saveAppConfig();
                 databases = dbNames.map((n) => DatabaseServer(
                   name: n,
                   host: hostController.text,
-                  port: int.parse(portController.text),
+                  port: parsedPort,
                   database: n,
                   username: usernameController.text,
                   environment: n.contains('prod') ? 'PROD' : 'DEV',
                   online: true,
                 )).toList();
                 
-                setState(() {
-                  connected = true;
-                  connectedHost = hostController.text;
-                });
                 Navigator.of(dialogContext).pop();
               } catch (e) {
+                await getIt.postgresService.disconnect();
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
               } finally {
                 setDialogState(() => loading = false);
@@ -174,8 +208,8 @@ class _DashboardPageState extends State<DashboardPage> {
           backupRunning = false;
           backupProgress = 1.0;
           currentBackupMessage = 'Sucesso!';
-          backups.insert(0, record);
         });
+        await _loadBackups();
         if (record.status == BackupStatus.failed) {
           _showError(record.error ?? 'Falha desconhecida');
         }
@@ -188,6 +222,14 @@ class _DashboardPageState extends State<DashboardPage> {
           _showError(e.toString());
        }
     }
+  }
+
+  Future<void> disconnectPostgres() async {
+    await getIt.postgresService.disconnect();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PostgreSQL desconectado.')),
+    );
   }
 
   void _showError(String message) {
@@ -217,6 +259,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: getIt.postgresService,
+      builder: (context, child) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
+    final connected = getIt.postgresService.isConnected;
+    final connectedHost = getIt.postgresService.connectedHost;
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -241,6 +292,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       connected: connected,
                       host: connectedHost,
                       onAddDatabase: showAddDatabaseDialog,
+                      onDisconnect: disconnectPostgres,
                       onMenu: isMobile ? () { Scaffold.of(context).openDrawer(); } : null,
                     ),
                     Expanded(
@@ -271,6 +323,8 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildContent(bool isMobile) {
+    final connected = getIt.postgresService.isConnected;
+    final connectedHost = getIt.postgresService.connectedHost;
     if (selectedMenu == 1) {
       return DatabasesPage(
         databases: databases,

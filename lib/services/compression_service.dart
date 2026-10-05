@@ -14,12 +14,33 @@ class CompressionService {
     final outPath = '$filePath.zip';
     
     final encoder = ZipFileEncoder();
-    encoder.create(outPath);
-    encoder.addFile(file);
-    encoder.close();
-    
-    await file.delete();
+    try {
+      encoder.create(outPath);
+      encoder.addFile(file);
+    } finally {
+      encoder.close();
+    }
+    await _deleteWithRetry(file);
     return outPath;
+  }
+
+  Future<void> _deleteWithRetry(File file) async {
+    OSError? lastError;
+    for (var attempt = 0; attempt < 10; attempt++) {
+      try {
+        if (!await file.exists()) return;
+        await file.delete();
+        return;
+      } on FileSystemException catch (error) {
+        lastError = error.osError;
+        await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
+      }
+    }
+    throw FileSystemException(
+      'Não foi possível remover o arquivo intermediário após várias tentativas.',
+      file.path,
+      lastError,
+    );
   }
 
   Future<String> decompressFile(String filePath, String password) async {

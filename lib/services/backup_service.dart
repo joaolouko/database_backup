@@ -38,7 +38,7 @@ class BackupService {
       for (final path in paths) {
         if (File(path).existsSync()) return path;
       }
-      return null;
+      return 'pg_dump.exe';
     }
     return 'pg_dump';
   }
@@ -56,7 +56,7 @@ class BackupService {
       for (final path in paths) {
         if (File(path).existsSync()) return path;
       }
-      return null;
+      return 'pg_restore.exe';
     }
     return 'pg_restore';
   }
@@ -99,6 +99,14 @@ class BackupService {
       progress('Validação', 'Iniciando validação de parâmetros...');
       final pgDump = _findPgDump();
       if (pgDump == null) throw Exception('pg_dump não encontrado.');
+      final outputDir = Directory(destination);
+      await outputDir.create(recursive: true);
+      if (!await outputDir.exists()) {
+        throw Exception('Não foi possível criar o diretório de destino: $destination');
+      }
+      if (additionalDestination != null && additionalDestination.isNotEmpty) {
+        await Directory(additionalDestination).create(recursive: true);
+      }
       if (encrypt && (encryptionPassword == null || encryptionPassword.isEmpty)) {
         throw Exception('Senha de criptografia não fornecida.');
       }
@@ -146,20 +154,23 @@ class BackupService {
       
       final process = await Process.start(
         pgDump, arguments,
-        environment: {'PGPASSWORD': password},
+        environment: {...Platform.environment, 'PGPASSWORD': password},
         runInShell: false,
       );
       
-      final stderrList = <String>[];
-      process.stdout.listen((bytes) {});
-      process.stderr.listen((bytes) {
-        stderrList.add(String.fromCharCodes(bytes));
-      });
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
       final exitCode = await process.exitCode;
+      await stdoutFuture;
+      final stderr = await stderrFuture;
       if (exitCode != 0) {
-        throw Exception('pg_dump falhou: ${stderrList.join("\\n")}');
+        throw Exception('pg_dump falhou (código $exitCode): $stderr');
       }
       currentFile = dumpPath;
+      final dumpFile = File(dumpPath);
+      if (!await dumpFile.exists() || await dumpFile.length() == 0) {
+        throw Exception('pg_dump terminou sem gerar um arquivo válido: $dumpPath');
+      }
       
       if (encrypt) {
         progress('Criptografia', 'Criptografando arquivo AES...');
@@ -290,22 +301,17 @@ class BackupService {
       
       final process = await Process.start(
         pgRestore, arguments,
-        environment: {'PGPASSWORD': password},
+        environment: {...Platform.environment, 'PGPASSWORD': password},
         runInShell: false,
       );
       
-      final stderrList = <String>[];
-      process.stdout.listen((bytes) {});
-      process.stderr.listen((bytes) {
-        stderrList.add(String.fromCharCodes(bytes));
-      });
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
       final exitCode = await process.exitCode;
-      
-      if (exitCode != 0 && stderrList.isNotEmpty) {
-        // Sometimes pg_restore returns non-zero on warnings, but let's throw if it has errors
-        if (stderrList.any((e) => e.contains('error') || e.contains('fatal'))) {
-           throw Exception('pg_restore falhou: ${stderrList.join("\\n")}');
-        }
+      await stdoutFuture;
+      final stderr = await stderrFuture;
+      if (exitCode != 0) {
+        throw Exception('pg_restore falhou (código $exitCode): $stderr');
       }
       
       if (onProgress != null) onProgress('Integridade', 'Verificando integridade...');

@@ -283,12 +283,14 @@ class TopBar extends StatelessWidget {
   final bool connected;
   final String? host;
   final VoidCallback onAddDatabase;
+  final VoidCallback onDisconnect;
   final VoidCallback? onMenu;
 
   const TopBar({
     required this.connected,
     required this.host,
     required this.onAddDatabase,
+    required this.onDisconnect,
     this.onMenu,
   });
 
@@ -348,8 +350,7 @@ class TopBar extends StatelessWidget {
             ),
           ),
 
-          if (connected)
-            Container(
+          Container(
               padding:
               const EdgeInsets.symmetric(
                 horizontal: 10,
@@ -357,8 +358,9 @@ class TopBar extends StatelessWidget {
               ),
               decoration:
               BoxDecoration(
-                color:
-                const Color(0xFF052E16),
+                color: connected
+                    ? const Color(0xFF052E16)
+                    : const Color(0xFF1E293B),
                 borderRadius:
                 BorderRadius.circular(
                   20,
@@ -366,21 +368,23 @@ class TopBar extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.circle,
+                  Icon(
+                    connected ? Icons.circle : Icons.cloud_off,
                     size: 8,
-                    color:
-                    Color(0xFF22C55E),
+                    color: connected
+                        ? const Color(0xFF22C55E)
+                        : const Color(0xFF94A3B8),
                   ),
                   const SizedBox(
                       width: 7),
                   Text(
-                    host ?? 'Conectado',
+                    connected ? (host ?? 'Conectado') : 'Desconectado',
                     style:
-                    const TextStyle(
+                    TextStyle(
                       fontSize: 12,
-                      color:
-                      Color(0xFF4ADE80),
+                      color: connected
+                          ? const Color(0xFF4ADE80)
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                 ],
@@ -390,14 +394,12 @@ class TopBar extends StatelessWidget {
           const SizedBox(width: 15),
 
           FilledButton.icon(
-            onPressed:
-            onAddDatabase,
-            icon: const Icon(
-              Icons.add,
+            onPressed: connected ? onDisconnect : onAddDatabase,
+            icon: Icon(
+              connected ? Icons.link_off : Icons.add,
               size: 18,
             ),
-            label:
-            const Text('Conectar'),
+            label: Text(connected ? 'Desconectar' : 'Conectar'),
           ),
         ],
       ),

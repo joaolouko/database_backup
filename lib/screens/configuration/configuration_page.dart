@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
 import '../../core/config.dart';
+import '../../core/database.dart';
 import '../../services/service_locator.dart';
 
 class ConfigurationPage extends StatefulWidget {
@@ -12,6 +13,14 @@ class ConfigurationPage extends StatefulWidget {
 
 class _ConfigurationPageState extends State<ConfigurationPage> {
   bool _testingConnection = false;
+
+  Future<void> _saveConfiguration() async {
+    await saveAppConfig();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Configurações salvas localmente.'), backgroundColor: Colors.green),
+    );
+  }
 
   void _testConnection() async {
     setState(() {
@@ -35,6 +44,7 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
         );
       }
     } catch (e) {
+      await getIt.postgresService.disconnect();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Falha na conexão: $e'), backgroundColor: Colors.red),
@@ -144,6 +154,7 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
                               setState(() {
                                 appConfig.destinationPath = dir;
                               });
+                              await saveAppConfig();
                             }
                           },
                         ),
@@ -166,6 +177,7 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
                               setState(() {
                                 appConfig.additionalDestination = dir;
                               });
+                              await saveAppConfig();
                             }
                           },
                         ),
@@ -224,6 +236,15 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
                         obscureText: true,
                         onChanged: (v) => appConfig.compressionPassword = v,
                       ),
+                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _saveConfiguration,
+                        icon: const Icon(Icons.save),
+                        label: const Text('Salvar configurações'),
+                      ),
+                    ),
                   ],
                 ),
               ),
