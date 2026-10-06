@@ -40,6 +40,22 @@ void main() {
       expect(result, 'VACUUM');
     });
 
+    test('Exatamente 30 dias deve retornar VACUUM', () async {
+      final mockData = {
+        'inicio': DateTime.now().subtract(const Duration(days: 30))
+      };
+      final service = MaintenanceService(postgresService: MockPostgresService(mockData));
+      expect(await service.determineMaintenanceAction('postgres'), 'VACUUM');
+    });
+
+    test('Exatamente 60 dias deve retornar VACUUM', () async {
+      final mockData = {
+        'inicio': DateTime.now().subtract(const Duration(days: 60))
+      };
+      final service = MaintenanceService(postgresService: MockPostgresService(mockData));
+      expect(await service.determineMaintenanceAction('postgres'), 'VACUUM');
+    });
+
     test('Mais de 60 dias deve retornar VACUUM FULL ANALYZE', () async {
       final mockData = {
         'inicio': DateTime.now().subtract(const Duration(days: 90))

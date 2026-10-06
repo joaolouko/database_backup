@@ -7,7 +7,8 @@ class AppConfig {
   String destinationPath = '';
   String additionalDestination = '';
   int retentionCount = 0;
-  bool executeMaintenance = false;
+  String maintenanceMode = 'automatic';
+  bool executeMaintenance = true;
   bool fullMaintenance = false;
   bool enableEncryption = false;
   String encryptionPassword = '';
@@ -22,6 +23,7 @@ class AppConfig {
         'destinationPath': destinationPath,
         'additionalDestination': additionalDestination,
         'retentionCount': retentionCount.toString(),
+        'maintenanceMode': maintenanceMode,
         'executeMaintenance': executeMaintenance.toString(),
         'fullMaintenance': fullMaintenance.toString(),
         'enableEncryption': enableEncryption.toString(),
@@ -36,6 +38,8 @@ class AppConfig {
     destinationPath = values['destinationPath'] ?? destinationPath;
     additionalDestination = values['additionalDestination'] ?? additionalDestination;
     retentionCount = int.tryParse(values['retentionCount'] ?? '') ?? retentionCount;
+    maintenanceMode = values['maintenanceMode'] ??
+        (values['executeMaintenance'] == 'false' ? 'none' : 'automatic');
     executeMaintenance = _parseBool(values['executeMaintenance'], executeMaintenance);
     fullMaintenance = _parseBool(values['fullMaintenance'], fullMaintenance);
     enableEncryption = _parseBool(values['enableEncryption'], enableEncryption);

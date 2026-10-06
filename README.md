@@ -19,7 +19,7 @@ Este projeto foi construído e validado utilizando as versões obrigatórias est
   - `> 60 dias` ou sem histórico: VACUUM FULL ANALYZE
 - **pg_dump e pg_restore**: Descoberta automática de executáveis nas pastas do PostgreSQL e orquestração controlada via `Process.start`
 - **Criptografia AES**: Implementação real AES-256-GCM para proteger os backups.
-- **Compressão ZIP**: Arquivos `dump/aes` encapsulados num ZIP funcional, pronto para extração e uso.
+- **Compressão ZIP protegida**: A senha é aplicada por `7z`/`7zz` ou `zip` disponível no PATH; ZIP sem senha usa o pacote `archive`.
 - **Retenção e Cópia**: O sistema apaga backups mais antigos limitados a um número X e gera uma cópia do backup em pasta separada configurada.
 - **Restauro com Verificação**: Funcionalidade completa para descriptografar, descompactar e injetar via `pg_restore`, concluindo com verificação de integridade (análise de volume).
 - **Simulação de E-mail**: Notificações demonstrativas na UI para casos de falha.
@@ -40,7 +40,8 @@ Scripts inclusos em `database/`
 2. Garanta a SDK do Flutter correspondente: `fvm install 3.38.7` e `fvm use 3.38.7`.
 3. Rode `fvm flutter pub get`
 4. Crie no PostgreSQL uma base e importe os scripts em `database/` (Ex: via PgAdmin ou psql).
-5. Execute a aplicação: `fvm flutter run -d windows`
+5. Para ZIP protegido, instale `7z`/`7zz` no Windows ou `7z`/`zip` e `unzip` no Linux/macOS, deixando os executáveis no PATH.
+6. Execute a aplicação: `fvm flutter run -d windows`
 
 ### Estado local durante o desenvolvimento
 
@@ -61,10 +62,10 @@ Conforme a avaliação do trabalho, as validações cobrem:
 2. **<30 dias**: Ignora rotinas, segue o pipe direto.
 3. **30–60 dias**: Aciona VACUUM standard.
 4. **>60 dias**: Aciona VACUUM FULL ANALYZE.
-5. **Manutenção manual**: Overrides automáticos, roda a completa ou nula.
+5. **Manutenção manual**: Overrides automáticos, podendo executar VACUUM, VACUUM FULL ANALYZE ou nenhuma ação.
 6. **Backup simples**: Roda limpo, verifica saída *.dump.
 7. **Backup criptografado**: Roda e lança output criptografado AES.
-8. **Backup compactado**: Roda compressão funcional via archive.
+8. **Backup compactado**: Roda ZIP protegido por senha, com 7z/7zz ou zip/unzip.
 9. **Criptografia + compactação**: Pipeline completo preservando a ordem (Dump > AES > ZIP).
 10. **Retenção**: Define N=2, gera o 3º, e valida exclusão do 1º gerado.
 11. **Cópia adicional**: Gera arquivo extra no caminho adicional.

@@ -11,7 +11,11 @@ class MaintenanceService {
       return 'VACUUM FULL ANALYZE';
     }
 
-    final inicio = lastMaintenance['inicio'] as DateTime;
+    final rawInicio = lastMaintenance['inicio'];
+    final inicio = rawInicio is DateTime
+        ? rawInicio
+        : DateTime.tryParse(rawInicio.toString());
+    if (inicio == null) return 'VACUUM FULL ANALYZE';
     final diff = DateTime.now().difference(inicio).inDays;
 
     if (diff < 30) {

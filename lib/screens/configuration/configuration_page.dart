@@ -37,6 +37,7 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
       );
       
       final dbs = await getIt.postgresService.getDatabases();
+      await getIt.secretStore.savePassword('postgres_password', appConfig.password);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -201,17 +202,26 @@ class _ConfigurationPageState extends State<ConfigurationPage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    CheckboxListTile(
-                      title: const Text('Executar manutenção antes do backup (VACUUM / VACUUM FULL ANALYZE)'),
-                      value: appConfig.executeMaintenance,
-                      onChanged: (v) => setState(() => appConfig.executeMaintenance = v ?? false),
-                    ),
-                    if (appConfig.executeMaintenance)
-                      CheckboxListTile(
-                        title: const Text('Manutenção completa forçada (VACUUM FULL ANALYZE)'),
-                        value: appConfig.fullMaintenance,
-                        onChanged: (v) => setState(() => appConfig.fullMaintenance = v ?? false),
+                    DropdownButtonFormField<String>(
+                      value: appConfig.maintenanceMode,
+                      decoration: const InputDecoration(
+                        labelText: 'Manutenção antes do backup',
                       ),
+                      items: const [
+                        DropdownMenuItem(value: 'automatic', child: Text('Automática pelas regras de data')),
+                        DropdownMenuItem(value: 'none', child: Text('Não executar manutenção')),
+                        DropdownMenuItem(value: 'vacuum', child: Text('Executar VACUUM manualmente')),
+                        DropdownMenuItem(value: 'full', child: Text('Executar VACUUM FULL ANALYZE manualmente')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          appConfig.maintenanceMode = value;
+                          appConfig.executeMaintenance = value != 'none';
+                          appConfig.fullMaintenance = value == 'full';
+                        });
+                      },
+                    ),
                     CheckboxListTile(
                       title: const Text('Criptografar (AES)'),
                       value: appConfig.enableEncryption,

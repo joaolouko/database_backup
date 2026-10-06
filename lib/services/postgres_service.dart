@@ -145,6 +145,28 @@ class PostgresService extends ChangeNotifier {
     return result.first[0].toString();
   }
 
+  Future<Map<String, dynamic>> getDatabaseIntegrity() async {
+    final connection = _connection;
+    if (connection == null) throw Exception('Não conectado.');
+    final tables = await connection.execute(Sql.named('''
+      SELECT COUNT(*)
+      FROM information_schema.tables
+      WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+        AND table_type = 'BASE TABLE'
+    '''));
+    final rows = await connection.execute(Sql.named('''
+      SELECT COALESCE(SUM(n_live_tup), 0)::bigint
+      FROM pg_stat_user_tables
+    '''));
+    final databaseName = await connection.execute(Sql.named('SELECT current_database()'));
+    final size = await getDatabaseSize(databaseName.first[0].toString());
+    return {
+      'tableCount': (tables.first[0] as num).toInt(),
+      'rowEstimate': (rows.first[0] as num).toInt(),
+      'size': size,
+    };
+  }
+
   Future<void> executeMaintenance(String query, {
     required String host,
     required int port,

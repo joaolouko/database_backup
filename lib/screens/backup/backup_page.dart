@@ -63,6 +63,7 @@ class _BackupPageState extends State<BackupPage> {
         additionalDestination: appConfig.additionalDestination,
         executeMaintenance: appConfig.executeMaintenance,
         fullMaintenance: appConfig.fullMaintenance,
+        maintenanceMode: appConfig.maintenanceMode,
         encrypt: appConfig.enableEncryption,
         encryptionPassword: appConfig.encryptionPassword,
         compress: appConfig.enableCompression,

@@ -73,7 +73,8 @@ class _HistoryPageState extends State<HistoryPage> {
             ],
           ),
           const SizedBox(height: 24),
-          Expanded(
+          SizedBox(
+            height: 600,
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _history.isEmpty

@@ -102,6 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 appConfig.username = usernameController.text.trim();
                 appConfig.password = passwordController.text;
                 appConfig.database = databaseController.text.trim();
+                await getIt.secretStore.savePassword('postgres_password', appConfig.password);
                 await saveAppConfig();
                 databases = dbNames.map((n) => DatabaseServer(
                   name: n,
@@ -188,6 +189,7 @@ class _DashboardPageState extends State<DashboardPage> {
         additionalDestination: appConfig.additionalDestination,
         executeMaintenance: appConfig.executeMaintenance,
         fullMaintenance: appConfig.fullMaintenance,
+        maintenanceMode: appConfig.maintenanceMode,
         encrypt: appConfig.enableEncryption,
         encryptionPassword: appConfig.encryptionPassword,
         compress: appConfig.enableCompression,
