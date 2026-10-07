@@ -17,6 +17,10 @@ void main() async {
   setupServiceLocator();
   await initDatabase();
   appConfig.password = await getIt.secretStore.getPassword('postgres_password') ?? '';
+  appConfig.encryptionPassword =
+      await getIt.secretStore.getPassword('backup_encryption_password') ?? '';
+  appConfig.compressionPassword =
+      await getIt.secretStore.getPassword('backup_zip_password') ?? '';
 
   runApp(const MyApp());
 }

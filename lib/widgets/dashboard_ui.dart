@@ -127,6 +127,13 @@ class Sidebar extends StatelessWidget {
                 onSelected(3),
           ),
 
+          _SidebarItem(
+            icon: Icons.restore_rounded,
+            title: 'Restaurar backup',
+            selected: selectedIndex == 4,
+            onTap: () => onSelected(4),
+          ),
+
           const Spacer(),
 
           Container(
@@ -542,12 +549,6 @@ class DashboardContent
                   FontWeight.bold,
                 ),
               ),
-            ),
-            TextButton(
-              onPressed:
-              onAddDatabase,
-              child: const Text(
-                  'Conectar servidor'),
             ),
           ],
         ),
@@ -1796,6 +1797,5 @@ class _SettingCard
 // ============================================================
 // DIALOG FIELD
 // ============================================================
-
 
 

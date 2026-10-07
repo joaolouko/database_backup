@@ -21,8 +21,9 @@ class _DashboardPageState extends State<DashboardPage> {
   List<DatabaseServer> databases = [];
   List<BackupRecord> backups = [];
   
-  bool connecting = false;
   bool backupRunning = false;
+  bool _loadingDatabases = false;
+  String? _databasesConnectionKey;
   
   double backupProgress = 0;
   String? currentBackupDatabase;
@@ -44,6 +45,32 @@ class _DashboardPageState extends State<DashboardPage> {
     final loaded = rows.map(_recordFromRow).toList();
     if (mounted) {
       setState(() => backups = loaded);
+    }
+  }
+
+  Future<void> _refreshDatabases() async {
+    final postgres = getIt.postgresService;
+    if (!postgres.isConnected || _loadingDatabases) return;
+    final key = '${postgres.connectedHost}:${postgres.connectedPort}';
+    if (_databasesConnectionKey == key && databases.isNotEmpty) return;
+    _loadingDatabases = true;
+    try {
+      final names = await postgres.getDatabases();
+      if (!mounted || !postgres.isConnected) return;
+      setState(() {
+        _databasesConnectionKey = key;
+        databases = names.map((name) => DatabaseServer(
+          name: name,
+          host: postgres.connectedHost ?? appConfig.host,
+          port: postgres.connectedPort ?? appConfig.port,
+          database: name,
+          username: appConfig.username,
+          environment: name.toLowerCase().contains('prod') ? 'PROD' : 'DEV',
+          online: true,
+        )).toList();
+      });
+    } finally {
+      _loadingDatabases = false;
     }
   }
 
@@ -244,11 +271,18 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Icon(Icons.error_outline, color: Color(0xFFF87171)),
               SizedBox(width: 10),
-              Text('Erro de Backup (Email Simulado Enviado)'),
+              Text('Erro de Backup'),
             ],
           ),
           content: SelectableText(message),
           actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _simulateEmail(message);
+              },
+              child: const Text('Simular envio de e-mail'),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('OK'),
@@ -256,6 +290,28 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         );
       },
+    );
+  }
+
+  void _simulateEmail(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('E-mail simulado'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Destinatário: admin@sistema.com\n'
+            'Assunto: Falha no backup\n'
+            'Status: simulado com sucesso\n\n$error',
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -270,6 +326,15 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildScaffold(BuildContext context) {
     final connected = getIt.postgresService.isConnected;
     final connectedHost = getIt.postgresService.connectedHost;
+    if (!connected && databases.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          databases = [];
+          _databasesConnectionKey = null;
+        });
+      });
+    }
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -327,6 +392,16 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildContent(bool isMobile) {
     final connected = getIt.postgresService.isConnected;
     final connectedHost = getIt.postgresService.connectedHost;
+    if (connected && (selectedMenu == 0 || selectedMenu == 1)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await _refreshDatabases();
+        } catch (_) {
+          // A conexão permanece sob controle do PostgresService; a Dashboard
+          // não deve gerar erro assíncrono se a descoberta falhar.
+        }
+      });
+    }
     if (selectedMenu == 1) {
       return DatabasesPage(
         databases: databases,

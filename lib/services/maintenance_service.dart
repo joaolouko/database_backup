@@ -5,6 +5,11 @@ class MaintenanceService {
   
   MaintenanceService({required this.postgresService});
 
+  String _redact(String message, String password) {
+    if (password.isEmpty) return message;
+    return message.replaceAll(password, '[REDACTED]');
+  }
+
   Future<String> determineMaintenanceAction(String database) async {
     final lastMaintenance = await postgresService.getLastMaintenance(database);
     if (lastMaintenance == null) {
@@ -70,7 +75,7 @@ class MaintenanceService {
         inicio: start,
         fim: end,
         resultado: 'FALHA',
-        mensagemErro: e.toString(),
+        mensagemErro: _redact(e.toString(), password),
       );
       rethrow;
     }

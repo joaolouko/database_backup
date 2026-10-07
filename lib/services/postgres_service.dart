@@ -89,17 +89,23 @@ class PostgresService extends ChangeNotifier {
           queryTimeout: const Duration(seconds: 60),
         ),
       );
-    } on PgException catch (error) {
-      if (!error.toString().contains('does not support SSL')) rethrow;
-      return Connection.open(
-        endpoint,
-        settings: ConnectionSettings(
-          encoding: utf8,
-          sslMode: SslMode.disable,
-          connectTimeout: const Duration(seconds: 15),
-          queryTimeout: const Duration(seconds: 60),
-        ),
-      );
+    } catch (_) {
+      // Alguns servidores remotos sem SSL encerram o handshake com bytes que
+      // o driver interpreta como FormatException. Tentar explicitamente sem
+      // SSL também cobre esse caso, sem usar shell ou alterar credenciais.
+      try {
+        return await Connection.open(
+          endpoint,
+          settings: ConnectionSettings(
+            encoding: utf8,
+            sslMode: SslMode.disable,
+            connectTimeout: const Duration(seconds: 15),
+            queryTimeout: const Duration(seconds: 60),
+          ),
+        );
+      } catch (_) {
+        rethrow;
+      }
     }
   }
 
@@ -160,9 +166,11 @@ class PostgresService extends ChangeNotifier {
     '''));
     final databaseName = await connection.execute(Sql.named('SELECT current_database()'));
     final size = await getDatabaseSize(databaseName.first[0].toString());
+    final tableCount = int.tryParse(tables.first[0].toString()) ?? 0;
+    final rowEstimate = int.tryParse(rows.first[0].toString()) ?? 0;
     return {
-      'tableCount': (tables.first[0] as num).toInt(),
-      'rowEstimate': (rows.first[0] as num).toInt(),
+      'tableCount': tableCount,
+      'rowEstimate': rowEstimate,
       'size': size,
     };
   }

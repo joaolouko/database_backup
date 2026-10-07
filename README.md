@@ -54,6 +54,7 @@ O histórico de execuções e as configurações não sensíveis são armazenado
 Esse arquivo é recriado automaticamente quando necessário e pode ser removido junto com os artefatos de desenvolvimento usando `flutter clean` ou apagando `.dart_tool`. Senhas não são gravadas nessa tabela.
 
 O pipeline aguarda o encerramento dos streams de `pg_dump`/`pg_restore` e usa tentativas de remoção para arquivos intermediários, evitando o erro de arquivo bloqueado no Windows durante a combinação de criptografia e compactação.
+As senhas do PostgreSQL, AES e ZIP são recuperadas pelo armazenamento seguro e não são salvas em `app_settings`. A restauração está disponível no menu lateral e a lista de bancos é redescoberta quando a conexão é feita pela tela de Configurações.
 
 ## Cenários de Demonstração (Matriz de Testes)
 
